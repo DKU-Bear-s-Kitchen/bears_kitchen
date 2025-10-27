@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "79484622548",
+    "project_id": "bears-kitchen-5f546",
+    "storage_bucket": "bears-kitchen-5f546.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:79484622548:android:50da4e643f03e2c2d70d41",
+        "android_client_info": {
+          "package_name": "com.example.dku_bears_kitchen"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIdNG1nNspbdY1sTuiKlNmDKsv-mqJ6q8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
