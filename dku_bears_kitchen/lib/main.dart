@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:dku_bears_kitchen/screens/login_screen.dart';
+import 'firebase_options.dart'; // flutterfire configure 자동 생성 파일
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Firebase 초기화
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  runApp(BearsKitchenApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
+class BearsKitchenApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Bear\'s Kitchen',
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Firebase 연결 완료!')),
-        body: const Center(child: Text('연결 성공 🎉')),
+      title: "Bear's Kitchen",
+      theme: ThemeData(
+        primarySwatch: Colors.deepOrange,
+        scaffoldBackgroundColor: Colors.white,
       ),
+      home: LoginScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
