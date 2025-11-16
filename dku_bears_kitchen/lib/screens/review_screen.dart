@@ -11,7 +11,7 @@ class ReviewScreen extends StatelessWidget {
     required this.menuPrice,
   });
 
-  // (가짜 데이터)
+  //가짜 데이터
   final List<Map<String, String>> dummyReviewList = [
     { 'user': '김학생', 'comment': '정말 맛있어요! 양도 충분히 든든합니다.', 'date': '2025-09-27' },
     { 'user': '이학생', 'comment': '가격 대비 만족스러워요.', 'date': '2025-09-27' },
@@ -19,7 +19,7 @@ class ReviewScreen extends StatelessWidget {
     { 'user': '장학생', 'comment': '다음번에도 우삼겹 덮밥 먹을 것 같습니다.', 'date': '2025-09-18' },
     { 'user': '정학생', 'comment': '매일 먹어도 질리지 않을 것 같아요.', 'date': '2025-09-17' },
   ];
-
+  //리뷰 작성 팝업 띄움
   void _showReviewModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -77,6 +77,7 @@ class ReviewScreen extends StatelessWidget {
                           color: Color(0xFF111827),
                         ),
                       ),
+                      //가짜 별점 표시
                       Row(
                         children: [
                           Icon(Icons.star, color: Color(0xFFFACC15), size: 16),
@@ -128,6 +129,7 @@ class ReviewScreen extends StatelessWidget {
                           ],
                         ),
                         SizedBox(height: 10),
+                        //가짜 AI 요약 텍스트
                         Text(
                           "AI 리뷰 요약",
                           style: TextStyle(color: Color(0xFF6B6280)),

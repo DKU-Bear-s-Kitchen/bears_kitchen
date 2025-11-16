@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:dku_bears_kitchen/screens/review_screen.dart';
 
 class MenuScreen extends StatelessWidget {
-  // '가게 이름'을 받는 변수
+  final String storeId;
   final String storeName;
 
   MenuScreen({
     super.key,
+    required this.storeId,
     required this.storeName,
   });
 
-  // (가짜 데이터)
+  //가짜 데이터
   final List<Map<String, String>> dummyMenuList = [
     { 'name': '우삼겹 덮밥', 'price': '3,500원' },
     { 'name': '참치마요 덮밥', 'price': '3,500원' },
@@ -29,7 +30,6 @@ class MenuScreen extends StatelessWidget {
         iconTheme: IconThemeData(
           color: Color(0xFF1F2937),
         ),
-        // '받아온' 가게 이름 사용
         title: Text(
           storeName,
           style: TextStyle(
@@ -56,7 +56,6 @@ class MenuScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // '받아온' 가게 이름 사용
                   Text(
                     storeName,
                     style: TextStyle(
@@ -71,7 +70,7 @@ class MenuScreen extends StatelessWidget {
                       Icon(Icons.star, color: Color(0xFFFACC15), size: 16),
                       SizedBox(width: 4),
                       Text(
-                        "4.5 (120)", // (가짜 데이터)
+                        "4.5 (120)", //가짜 데이터
                         style: TextStyle(
                           color: Color(0xFF4B5563),
                         ),
@@ -96,7 +95,6 @@ class MenuScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: List.generate(dummyMenuList.length, (index) {
-                  // (⭐추가!⭐) 'menu' 변수를 여기서 선언
                   final menu = dummyMenuList[index];
                   
                   return GestureDetector(
@@ -104,7 +102,7 @@ class MenuScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          // 2. 'ReviewScreen'으로 '메뉴 이름'과 '가격'을 전달!
+                          //메뉴 이름과 가격을 전달
                           builder: (context) => ReviewScreen(
                             menuName: menu['name']!, // 예: "우삼겹 덮밥"
                             menuPrice: menu['price']!, // 예: "3,500원"
