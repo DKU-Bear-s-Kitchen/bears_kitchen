@@ -46,37 +46,58 @@ class MenuScreen extends StatelessWidget {
               ),
             ),
 
-            // 2. 식당 정보 영역 (이름, 별점)
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    storeName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: const [
-                      Icon(Icons.star, color: Color(0xFFFACC15), size: 16),
-                      SizedBox(width: 4),
+            // 2. 🔥 [핵심 변경] 식당 정보 영역 (실시간 별점 연동)
+            StreamBuilder<DocumentSnapshot>(
+              // stores 컬렉션의 해당 식당 문서 구독
+              stream: FirebaseFirestore.instance
+                  .collection('stores')
+                  .doc(storeId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                // 기본값 설정 (데이터 로딩 전이나 없을 때)
+                double avgRating = 0.0;
+                int reviewCount = 0;
+
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  // 데이터베이스에서 값 가져오기 (숫자 변환 안전하게 처리)
+                  avgRating = (data['averageRating'] as num?)?.toDouble() ?? 0.0;
+                  reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
+                }
+
+                return Container(
+                  width: double.infinity,
+                  color: const Color(0xFFFFFFFF),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        "4.5 (120)", // 별점 기능은 아직 구현되지 않아 고정값 유지
-                        style: TextStyle(
-                          color: Color(0xFF4B5563),
+                        storeName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF111827),
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Color(0xFFFACC15), size: 16),
+                          const SizedBox(width: 4),
+                          // 🔥 실제 데이터 표시 (소수점 1자리)
+                          Text(
+                            "${avgRating.toStringAsFixed(1)} ($reviewCount)",
+                            style: const TextStyle(
+                              color: Color(0xFF4B5563),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
 
             // 3. 메뉴 리스트 타이틀
@@ -92,25 +113,21 @@ class MenuScreen extends StatelessWidget {
               ),
             ),
 
-            // 4. 🔥 [핵심 변경] Firestore 실시간 데이터 연동
+            // 4. 메뉴 리스트 (기존 코드 유지)
             StreamBuilder<QuerySnapshot>(
-              // 현재 식당(storeId)의 'menus' 컬렉션을 구독
               stream: FirebaseFirestore.instance
                   .collection('stores')
                   .doc(storeId)
                   .collection('menus')
-                  .orderBy('name') // 이름순 정렬 (원하면 price 등으로 변경 가능)
+                  .orderBy('name')
                   .snapshots(),
               builder: (context, snapshot) {
-                // 데이터 로딩 중일 때
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                // 에러 났을 때
                 if (snapshot.hasError) {
                   return const Center(child: Text("데이터를 불러오는데 실패했습니다."));
                 }
-                // 데이터가 없을 때
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(20),
@@ -118,20 +135,16 @@ class MenuScreen extends StatelessWidget {
                   );
                 }
 
-                // 데이터가 있을 때 리스트 생성
                 final menuDocs = snapshot.data!.docs;
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: ListView.builder(
-                    // SingleChildScrollView 안에서 ListView를 쓰려면 아래 두 설정 필수
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: menuDocs.length,
                     itemBuilder: (context, index) {
                       final menuData = menuDocs[index].data() as Map<String, dynamic>;
-
-                      // 데이터 가져오기 (없을 경우 기본값 처리)
                       final String name = menuData['name'] ?? '이름 없음';
                       final String price = "${menuData['price'] ?? 0}원";
 
@@ -141,8 +154,8 @@ class MenuScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) => ReviewScreen(
-                                storeId: storeId, // 이미 클래스 변수로 가지고 있음
-                                menuId: menuDocs[index].id, // Firestore 문서 ID
+                                storeId: storeId,
+                                menuId: menuDocs[index].id,
                                 menuName: name,
                                 menuPrice: price,
                               ),
@@ -153,7 +166,6 @@ class MenuScreen extends StatelessWidget {
                           margin: const EdgeInsets.only(bottom: 24),
                           child: Row(
                             children: [
-                              // 메뉴 이미지 (임시)
                               Container(
                                 width: 80,
                                 height: 80,
@@ -164,7 +176,6 @@ class MenuScreen extends StatelessWidget {
                                 child: const Icon(Icons.fastfood, color: Colors.grey),
                               ),
                               const SizedBox(width: 16),
-                              // 메뉴 정보 텍스트
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

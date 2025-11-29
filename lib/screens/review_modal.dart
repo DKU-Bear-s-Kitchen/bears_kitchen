@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // 🔥 인증 패키지
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ReviewModal extends StatefulWidget {
   final String storeId;
@@ -29,9 +29,8 @@ class _ReviewModalState extends State<ReviewModal> {
     super.dispose();
   }
 
-  // 🔥 리뷰 업로드 함수
+  // 🔥 리뷰 업로드 + [식당 평점]만 계산하는 함수
   Future<void> _submitReview() async {
-    // 1. 로그인 상태 확인 (안전장치)
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -40,7 +39,6 @@ class _ReviewModalState extends State<ReviewModal> {
       return;
     }
 
-    // 2. 입력값 유효성 검사
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("별점을 선택해주세요!")),
@@ -59,34 +57,58 @@ class _ReviewModalState extends State<ReviewModal> {
     });
 
     try {
-      // 3. Firestore 저장
-      // 경로: stores -> {storeId} -> menus -> {menuId} -> reviews
-      await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(widget.storeId)
-          .collection('menus')
-          .doc(widget.menuId)
-          .collection('reviews')
-          .add({
-        'rating': _rating,
-        'content': _reviewController.text.trim(),
+      // 📝 트랜잭션: 식당 점수만 업데이트합니다.
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // 1. 참조(Reference) 준비
+        final storeRef = FirebaseFirestore.instance.collection('stores').doc(widget.storeId);
 
-        // 🔥 [수정 완료] 화면에는 무조건 '익명 곰'으로 표시됩니다.
-        'author': '익명 곰',
+        // 리뷰는 여전히 메뉴 하위에 저장됩니다 (구조 유지)
+        final reviewRef = storeRef
+            .collection('menus')
+            .doc(widget.menuId)
+            .collection('reviews')
+            .doc();
 
-        // 🔥 [중요] 하지만 내 정보(마이페이지) 연동을 위해 'userId'는 진짜 ID를 저장합니다.
-        'userId': user.uid,
+        // 2. [식당] 데이터 읽기 (Read)
+        final storeSnapshot = await transaction.get(storeRef);
 
-        'createdAt': FieldValue.serverTimestamp(),
-        'menuName': widget.menuName, // 리스트 표시용
-        'storeId': widget.storeId,   // 식당 정보
+        if (!storeSnapshot.exists) {
+          throw Exception("식당 정보를 찾을 수 없습니다.");
+        }
+
+        // 3. [식당] 평균 평점 재계산 🧮
+        final double currentAvg = (storeSnapshot.data()?['averageRating'] as num?)?.toDouble() ?? 0.0;
+        final int currentCount = (storeSnapshot.data()?['reviewCount'] as num?)?.toInt() ?? 0;
+
+        final int newCount = currentCount + 1;
+        // 새로운 평균 = ((기존평균 * 기존개수) + 내점수) / 새개수
+        final double newAvg = ((currentAvg * currentCount) + _rating) / newCount;
+
+        // 4. 데이터 쓰기 (Write)
+
+        // (1) 리뷰 저장 (메뉴 하위에)
+        transaction.set(reviewRef, {
+          'rating': _rating,
+          'content': _reviewController.text.trim(),
+          'author': '익명 곰',
+          'userId': user.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+          'menuName': widget.menuName,
+          'storeId': widget.storeId,
+        });
+
+        // (2) 식당 문서 업데이트 (별점, 리뷰 개수) 🔥 메뉴 업데이트는 제외됨!
+        transaction.update(storeRef, {
+          'averageRating': newAvg,
+          'reviewCount': newCount,
+        });
       });
 
       if (!mounted) return;
 
-      Navigator.pop(context); // 모달 닫기
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("리뷰가 등록되었습니다! 🐻")),
+        const SnackBar(content: Text("리뷰 등록 완료! (식당 평점에 반영됨) 🐻")),
       );
     } catch (e) {
       print("리뷰 저장 실패: $e");
@@ -104,7 +126,6 @@ class _ReviewModalState extends State<ReviewModal> {
 
   @override
   Widget build(BuildContext context) {
-    // 키보드가 올라왔을 때 화면 가림 방지
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -138,8 +159,6 @@ class _ReviewModalState extends State<ReviewModal> {
               ),
             ),
             const SizedBox(height: 10),
-
-            // 별점 선택 버튼들
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
@@ -158,8 +177,6 @@ class _ReviewModalState extends State<ReviewModal> {
               }),
             ),
             const SizedBox(height: 16),
-
-            // 리뷰 내용 입력창
             TextField(
               controller: _reviewController,
               maxLines: 4,
@@ -183,8 +200,6 @@ class _ReviewModalState extends State<ReviewModal> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // 등록 버튼
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

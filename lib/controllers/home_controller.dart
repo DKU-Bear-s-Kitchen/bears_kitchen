@@ -1,16 +1,18 @@
+import 'dart:async'; // StreamSubscription을 위해 필요
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeController with ChangeNotifier {
-  // 🔥 Firestore 인스턴스 가져오기
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // 🔥 진짜 데이터를 담을 리스트 (처음엔 비어있음)
   List<Map<String, dynamic>> _stores = [];
   List<Map<String, dynamic>> _menus = [];
 
-  // 데이터 로딩 중인지 확인하는 변수
   bool _isLoading = true;
+
+  // 🔥 스트림을 관리하기 위한 변수 (메모리 누수 방지)
+  StreamSubscription? _storeSubscription;
+  StreamSubscription? _menuSubscription;
 
   bool get isLoading => _isLoading;
   List<Map<String, dynamic>> get allStores => _stores;
@@ -25,61 +27,74 @@ class HomeController with ChangeNotifier {
   int get bottomNavIndex => _bottomNavIndex;
   String get selectedTab => _selectedTab;
 
-  // 생성자: 컨트롤러가 만들어질 때 데이터 불러오기 시작
   HomeController() {
-    fetchData();
+    startListening();
+  }
+
+  // 컨트롤러가 사라질 때 스트림도 끊어줘야 함 (안전장치)
+  @override
+  void dispose() {
+    _storeSubscription?.cancel();
+    _menuSubscription?.cancel();
+    searchController.dispose();
+    super.dispose();
   }
 
   /// -------------------------------------------------------
-  /// 🔥 [핵심] Firestore에서 식당과 메뉴 데이터 가져오기
+  /// 🔥 [핵심 변경] get() 대신 snapshots()을 사용해 실시간 감시
   /// -------------------------------------------------------
-  Future<void> fetchData() async {
-    try {
-      _isLoading = true;
-      notifyListeners(); // "로딩 시작했다"고 알림
+  void startListening() {
+    _isLoading = true;
+    notifyListeners();
 
-      // 1. 식당 목록 가져오기 (stores 컬렉션)
-      final storeSnapshot = await _firestore.collection('stores').get();
-      _stores = storeSnapshot.docs.map((doc) {
+    // 1. 식당 목록 실시간 구독 (Stores)
+    _storeSubscription = _firestore.collection('stores').snapshots().listen((snapshot) {
+      _stores = snapshot.docs.map((doc) {
         final data = doc.data();
+
+        // 데이터베이스가 변경되면 이 부분이 자동으로 실행되어 점수를 갱신함
+        final double avgRating = (data['averageRating'] as num?)?.toDouble() ?? 0.0;
+        final int reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
+
         return {
           'id': doc.id,
           'name': data['name'] ?? '이름 없음',
-          // Firestore에 없는 필드는 임시로 채워줌 (UI 에러 방지)
           'tags': 'all',
-          'rating': '4.0 (New)',
+          'rating': '${avgRating.toStringAsFixed(1)} ($reviewCount)',
         };
       }).toList();
 
-      // 2. 모든 메뉴 가져오기 (Collection Group Query 사용)
-      // 'menus'라는 이름을 가진 모든 하위 컬렉션을 다 뒤져서 가져옴
-      final menuSnapshot = await _firestore.collectionGroup('menus').get();
-      _menus = menuSnapshot.docs.map((doc) {
+      _isLoading = false;
+      notifyListeners(); // 화면 갱신 알림
+    });
+
+    // 2. 메뉴 목록 실시간 구독 (Menus)
+    _menuSubscription = _firestore.collectionGroup('menus').snapshots().listen((snapshot) {
+      _menus = snapshot.docs.map((doc) {
         final data = doc.data();
         final storeId = doc.reference.parent.parent!.id;
+
+        // (참고: 아까 메뉴 별점 업데이트 기능은 뺐으므로, 메뉴 쪽 점수는 0.0으로 나올 수 있음)
+        final double avgRating = (data['averageRating'] as num?)?.toDouble() ?? 0.0;
+        final int reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
+
         return {
           'id': doc.id,
           'storeId': storeId,
           'name': data['name'] ?? '메뉴명 없음',
-          'price': "${data['price']}원", // 숫자를 문자열로 변환
-          // 태그가 DB에 없으면 가격이나 이름 기반으로 임시 태그 생성 (필터링 테스트용)
-          'tags': data['price'] > 7000 ? 'all, popular' : 'all, new',
-          'rating': '4.5',
+          'price': "${data['price']}원",
+          'tags': (data['price'] ?? 0) > 7000 ? 'all, popular' : 'all, new',
+          'rating': '${avgRating.toStringAsFixed(1)} ($reviewCount)',
         };
       }).toList();
 
-      print("✅ 데이터 로드 완료: 식당 ${_stores.length}개, 메뉴 ${_menus.length}개");
-
-    } catch (e) {
-      print("❌ 데이터 가져오기 실패: $e");
-    } finally {
       _isLoading = false;
-      notifyListeners(); // "로딩 끝났다! 화면 갱신해!"라고 알림
-    }
+      notifyListeners(); // 화면 갱신 알림
+    });
   }
 
   /// -------------------------------------------------------
-  /// 👇 아래 로직은 기존과 거의 동일 (필터링 로직)
+  /// 👇 필터링 로직 (기존 동일)
   /// -------------------------------------------------------
 
   bool get isShowingStores {
@@ -90,7 +105,6 @@ class HomeController with ChangeNotifier {
   }
 
   List<Map<String, dynamic>> get displayedList {
-    // 로딩 중이면 빈 리스트 반환 (UI에서 로딩바 처리 필요)
     if (_isLoading) return [];
 
     if (_searchText.isNotEmpty) {

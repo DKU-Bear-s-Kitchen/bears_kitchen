@@ -105,6 +105,7 @@ class MyPageScreen extends StatelessWidget {
                 stream: FirebaseFirestore.instance
                     .collectionGroup('reviews')
                     .where('userId', isEqualTo: myUserId)
+                    .orderBy('createdAt', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
                   int reviewCount = 0;
