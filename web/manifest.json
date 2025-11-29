@@ -1,6 +1,6 @@
 {
-    "name": "bears_kitchen",
-    "short_name": "bears_kitchen",
+    "name": "dku_bears_kitchen",
+    "short_name": "dku_bears_kitchen",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
