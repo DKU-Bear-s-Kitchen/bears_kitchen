@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReviewModal extends StatefulWidget {
-  final String storeId; // 👈 식당 ID 필요
-  final String menuId;  // 👈 메뉴 ID 필요
-  final String menuName; // 메뉴 이름 (저장할 때 같이 넣으면 편함)
+  final String storeId;
+  final String menuId;
+  final String menuName;
 
   const ReviewModal({
     super.key,
@@ -20,16 +20,17 @@ class ReviewModal extends StatefulWidget {
 class _ReviewModalState extends State<ReviewModal> {
   int _rating = 0;
   final TextEditingController _reviewController = TextEditingController();
-  bool _isSubmitting = false; // 중복 전송 방지용
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
-    _reviewController.dispose(); // 메모리 누수 방지
+    _reviewController.dispose();
     super.dispose();
   }
 
   // 🔥 리뷰 업로드 함수
   Future<void> _submitReview() async {
+    // 1. 유효성 검사
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("별점을 선택해주세요!")),
@@ -48,22 +49,28 @@ class _ReviewModalState extends State<ReviewModal> {
     });
 
     try {
-      // 👇 여기가 핵심! 하위 컬렉션 'reviews'에 데이터 추가
-      // 경로: stores -> {storeId} -> menus -> {menuId} -> reviews -> {review 문서}
+      // 2. Firestore 저장
+      // 경로: stores -> {storeId} -> menus -> {menuId} -> reviews
       await FirebaseFirestore.instance
           .collection('stores')
           .doc(widget.storeId)
           .collection('menus')
           .doc(widget.menuId)
-          .collection('reviews') // 👈 코드를 실행하면 이 컬렉션이 자동 생성됨!
+          .collection('reviews')
           .add({
         'rating': _rating,
         'content': _reviewController.text.trim(),
-        'author': '익명 곰', // 나중에 로그인 기능 넣으면 사용자 닉네임으로 교체
-        'createdAt': FieldValue.serverTimestamp(), // 서버 시간 저장
+        'author': '김단국', // 마이페이지 디자인에 맞춰 이름 설정
+        'createdAt': FieldValue.serverTimestamp(),
+
+        // 🔥 [중요] 내 정보(마이페이지) 연동을 위한 필수 데이터
+        'userId': 'user_01', // 현재 로그인한 유저 ID (임시)
+        'menuName': widget.menuName, // 어떤 메뉴인지 (리스트에 표시용)
+        'storeId': widget.storeId,   // 어떤 식당인지
       });
 
       if (!mounted) return;
+
       Navigator.pop(context); // 모달 닫기
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("리뷰가 등록되었습니다! 🐻")),
@@ -111,7 +118,7 @@ class _ReviewModalState extends State<ReviewModal> {
             const SizedBox(height: 20),
             Center(
               child: Text(
-                "${widget.menuName} 어떠셨나요?", // 메뉴 이름 표시
+                "${widget.menuName} 어떠셨나요?",
                 style: const TextStyle(
                   color: Color(0xFF4B5563),
                 ),
@@ -119,7 +126,7 @@ class _ReviewModalState extends State<ReviewModal> {
             ),
             const SizedBox(height: 10),
 
-            // 별점 선택 로직
+            // 별점 선택 버튼들
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
@@ -139,9 +146,9 @@ class _ReviewModalState extends State<ReviewModal> {
             ),
             const SizedBox(height: 16),
 
-            // 텍스트 입력창
+            // 리뷰 내용 입력창
             TextField(
-              controller: _reviewController, // 👈 컨트롤러 연결
+              controller: _reviewController,
               maxLines: 4,
               decoration: InputDecoration(
                 hintText: "솔직한 맛 평가를 남겨주세요",
@@ -168,7 +175,7 @@ class _ReviewModalState extends State<ReviewModal> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitReview, // 로딩 중이면 클릭 방지
+                onPressed: _isSubmitting ? null : _submitReview,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1F2937),
                   foregroundColor: const Color(0xFFFFFFFF),
