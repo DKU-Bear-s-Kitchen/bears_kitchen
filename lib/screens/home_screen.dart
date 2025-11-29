@@ -5,7 +5,7 @@ import 'package:dku_bears_kitchen/screens/menu_screen.dart';
 import 'package:dku_bears_kitchen/screens/review_screen.dart';
 // ✅ 새로 만든 AI 추천 화면 import
 import 'package:dku_bears_kitchen/screens/ai_recommend_screen.dart';
-
+import 'package:dku_bears_kitchen/screens/my_page_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -251,9 +251,7 @@ class HomeScreen extends StatelessWidget {
         );
 
       case 2: // 👤 3번 탭: 내 정보 (준비 중)
-        return const Center(
-          child: Text("내 정보 화면은 아직 준비 중입니다."),
-        );
+        return const MyPageScreen();
 
       default:
         return const Center(child: Text("Error"));

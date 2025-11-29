@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 🔥 인증 패키지
 
 class ReviewModal extends StatefulWidget {
   final String storeId;
@@ -30,7 +31,16 @@ class _ReviewModalState extends State<ReviewModal> {
 
   // 🔥 리뷰 업로드 함수
   Future<void> _submitReview() async {
-    // 1. 유효성 검사
+    // 1. 로그인 상태 확인 (안전장치)
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("로그인이 필요한 서비스입니다.")),
+      );
+      return;
+    }
+
+    // 2. 입력값 유효성 검사
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("별점을 선택해주세요!")),
@@ -49,7 +59,7 @@ class _ReviewModalState extends State<ReviewModal> {
     });
 
     try {
-      // 2. Firestore 저장
+      // 3. Firestore 저장
       // 경로: stores -> {storeId} -> menus -> {menuId} -> reviews
       await FirebaseFirestore.instance
           .collection('stores')
@@ -60,13 +70,16 @@ class _ReviewModalState extends State<ReviewModal> {
           .add({
         'rating': _rating,
         'content': _reviewController.text.trim(),
-        'author': '김단국', // 마이페이지 디자인에 맞춰 이름 설정
-        'createdAt': FieldValue.serverTimestamp(),
 
-        // 🔥 [중요] 내 정보(마이페이지) 연동을 위한 필수 데이터
-        'userId': 'user_01', // 현재 로그인한 유저 ID (임시)
-        'menuName': widget.menuName, // 어떤 메뉴인지 (리스트에 표시용)
-        'storeId': widget.storeId,   // 어떤 식당인지
+        // 🔥 [수정 완료] 화면에는 무조건 '익명 곰'으로 표시됩니다.
+        'author': '익명 곰',
+
+        // 🔥 [중요] 하지만 내 정보(마이페이지) 연동을 위해 'userId'는 진짜 ID를 저장합니다.
+        'userId': user.uid,
+
+        'createdAt': FieldValue.serverTimestamp(),
+        'menuName': widget.menuName, // 리스트 표시용
+        'storeId': widget.storeId,   // 식당 정보
       });
 
       if (!mounted) return;
