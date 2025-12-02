@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dku_bears_kitchen/screens/my_reviews_screen.dart';
 import 'package:dku_bears_kitchen/screens/login_screen.dart';
+import 'package:dku_bears_kitchen/screens/settings_screen.dart';
+import 'package:dku_bears_kitchen/screens/notice_screen.dart';
 
 class MyPageScreen extends StatelessWidget {
   const MyPageScreen({super.key});
@@ -159,11 +161,17 @@ class MyPageScreen extends StatelessWidget {
                       );
                     }),
                     const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                    _buildMenuItem(context, "공지사항"),
+                    _buildMenuItem(context, "공지사항", onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const NoticeScreen()),
+                      );
+                    }),
                     const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                    _buildMenuItem(context, "설정"),
+                    _buildMenuItem(context, "설정", isBottom: true, onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+                    }),
                     const Divider(height: 1, color: Color(0xFFF3F4F6)),
-
                     // 로그아웃
                     _buildMenuItem(context, "로그아웃", isBottom: true, isDestructive: true, onTap: () async {
                       await FirebaseAuth.instance.signOut();
