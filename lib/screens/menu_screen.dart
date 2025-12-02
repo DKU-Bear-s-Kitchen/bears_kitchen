@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dku_bears_kitchen/screens/review_screen.dart';
 
+
+import 'package:dku_bears_kitchen/widgets/menu_image.dart';
+
 class MenuScreen extends StatelessWidget {
   final String storeId;
   final String storeName;
@@ -20,9 +23,6 @@ class MenuScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFFFFFFF),
         foregroundColor: const Color(0xFF1F2937),
         elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Color(0xFF1F2937),
-        ),
         title: Text(
           storeName,
           style: const TextStyle(
@@ -36,31 +36,29 @@ class MenuScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 식당 이미지 영역 (임시 회색 박스)
-            Container(
+            // 1. 🎨 식당 대표 이미지 (파스텔톤 배너)
+            SizedBox(
               height: 220,
               width: double.infinity,
-              color: const Color(0xFFE5E7EB),
-              child: const Center(
-                child: Icon(Icons.store, size: 80, color: Colors.grey),
+              child: MenuImage(
+                menuName: storeName, // 식당 이름에 맞춰 색상/아이콘 결정
+                size: 220,
+                borderRadius: 0, // 상단 배너니까 둥근 모서리 없음
               ),
             ),
 
-            // 2. 🔥 [핵심 변경] 식당 정보 영역 (실시간 별점 연동)
+            // 2. 식당 정보 영역 (실시간 별점 연동)
             StreamBuilder<DocumentSnapshot>(
-              // stores 컬렉션의 해당 식당 문서 구독
               stream: FirebaseFirestore.instance
                   .collection('stores')
                   .doc(storeId)
                   .snapshots(),
               builder: (context, snapshot) {
-                // 기본값 설정 (데이터 로딩 전이나 없을 때)
                 double avgRating = 0.0;
                 int reviewCount = 0;
 
                 if (snapshot.hasData && snapshot.data!.exists) {
                   final data = snapshot.data!.data() as Map<String, dynamic>;
-                  // 데이터베이스에서 값 가져오기 (숫자 변환 안전하게 처리)
                   avgRating = (data['averageRating'] as num?)?.toDouble() ?? 0.0;
                   reviewCount = (data['reviewCount'] as num?)?.toInt() ?? 0;
                 }
@@ -85,7 +83,6 @@ class MenuScreen extends StatelessWidget {
                         children: [
                           const Icon(Icons.star, color: Color(0xFFFACC15), size: 16),
                           const SizedBox(width: 4),
-                          // 🔥 실제 데이터 표시 (소수점 1자리)
                           Text(
                             "${avgRating.toStringAsFixed(1)} ($reviewCount)",
                             style: const TextStyle(
@@ -113,7 +110,7 @@ class MenuScreen extends StatelessWidget {
               ),
             ),
 
-            // 4. 메뉴 리스트 (기존 코드 유지)
+            // 4. 메뉴 리스트
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('stores')
@@ -166,16 +163,16 @@ class MenuScreen extends StatelessWidget {
                           margin: const EdgeInsets.only(bottom: 24),
                           child: Row(
                             children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE5E7EB),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.fastfood, color: Colors.grey),
+                              // 📸 메뉴 아이콘 (MenuImage 위젯 사용)
+                              MenuImage(
+                                menuName: name, // 이름에 따라 색상/아이콘 자동 결정
+                                size: 80,
+                                borderRadius: 12,
                               ),
+
                               const SizedBox(width: 16),
+
+                              // 메뉴 정보 텍스트
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

@@ -3,13 +3,15 @@ import 'package:provider/provider.dart';
 import 'package:dku_bears_kitchen/controllers/home_controller.dart';
 import 'package:dku_bears_kitchen/screens/menu_screen.dart';
 import 'package:dku_bears_kitchen/screens/review_screen.dart';
-// ✅ 새로 만든 AI 추천 화면 import
+// ✅ 화면 연결
 import 'package:dku_bears_kitchen/screens/ai_recommend_screen.dart';
 import 'package:dku_bears_kitchen/screens/my_page_screen.dart';
+import 'package:dku_bears_kitchen/widgets/menu_image.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // 탭(전체, 새 메뉴, 인기 메뉴) 버튼 위젯
+  // 탭 버튼 위젯
   Widget _buildChip(String label, bool isSelected, VoidCallback onSelected) {
     return ChoiceChip(
       label: Text(label),
@@ -38,9 +40,6 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-
-      // ✅ AppBar 조건부 표시: '메뉴(홈)' 탭(인덱스 1)일 때만 검색창이 있는 AppBar를 보여줍니다.
-      // AI 추천 탭이나 내 정보 탭에서는 각 화면의 디자인을 따릅니다.
       appBar: controller.bottomNavIndex == 1
           ? AppBar(
               title: Row(
@@ -56,7 +55,6 @@ class HomeScreen extends StatelessWidget {
               backgroundColor: const Color(0xFFFFFFFF),
               foregroundColor: const Color(0xFF1F2937),
               elevation: 0,
-              // 검색창
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(60),
                 child: Padding(
@@ -82,11 +80,8 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             )
-          : null, // 1번 탭이 아니면 AppBar 숨김 (null)
-
-      // ✅ [핵심] 하단 탭 번호에 따라 보여줄 화면(Body)을 결정하는 함수 호출
+          : null,
       body: _buildBody(context, controller),
-
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: const Color(0xFFFFFFFF),
         elevation: 4,
@@ -117,15 +112,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// ✅ 탭 인덱스에 따라 다른 화면을 리턴하는 함수
   Widget _buildBody(BuildContext context, HomeController controller) {
-
     switch (controller.bottomNavIndex) {
-      case 0: // 💡 1번 탭: AI 추천 화면
-        return const AiRecommendScreen();
-
-      case 1: // 🏠 2번 탭: 메뉴 목록 (기존 홈 화면 로직)
-        // 리스트 데이터 가져오기
+      case 0: return const AiRecommendScreen();
+      case 1:
         List<Map<String, dynamic>> displayedList = controller.displayedList;
         bool isShowingStores = controller.isShowingStores;
 
@@ -135,7 +125,6 @@ class HomeScreen extends StatelessWidget {
 
         return Column(
           children: [
-            // 상단 필터 칩
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
               child: Row(
@@ -149,8 +138,6 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-            // 리스트 뷰
             Expanded(
               child: displayedList.isEmpty
                   ? const Center(child: Text("검색 결과가 없습니다."))
@@ -161,7 +148,6 @@ class HomeScreen extends StatelessWidget {
                         return GestureDetector(
                           onTap: () {
                             if (isShowingStores) {
-                              // 식당 클릭 -> 메뉴 목록 화면
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -172,7 +158,6 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               );
                             } else {
-                              // 메뉴 클릭 -> 리뷰 화면
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -198,14 +183,17 @@ class HomeScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
+                                // 🔥 [핵심 변경] 이미지(Image.network) 대신 파스텔톤 아이콘(MenuImage) 사용
+                                SizedBox(
                                   height: 180,
                                   width: double.infinity,
-                                  color: const Color(0xFFF3F4F6),
-                                  child: const Center(
-                                    child: Icon(Icons.image, size: 50, color: Colors.grey),
+                                  child: MenuImage(
+                                    menuName: item['name'].toString(), // 이름만 넣으면 알아서 디자인됨
+                                    size: 180,
+                                    borderRadius: 0, // 카드 상단이니까 둥근 모서리 없음
                                   ),
                                 ),
+
                                 Container(
                                   width: double.infinity,
                                   decoration: const BoxDecoration(
@@ -250,11 +238,9 @@ class HomeScreen extends StatelessWidget {
           ],
         );
 
-      case 2: // 👤 3번 탭: 내 정보 (준비 중)
-        return const MyPageScreen();
-
-      default:
-        return const Center(child: Text("Error"));
+      case 2: return const MyPageScreen();
+      default: return const Center(child: Text("Error"));
     }
   }
 }
+
