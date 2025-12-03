@@ -29,7 +29,7 @@ class _ReviewModalState extends State<ReviewModal> {
     super.dispose();
   }
 
-  // 🔥 리뷰 업로드 + [식당 평점]만 계산하는 함수
+  // 🔥 리뷰 업로드 + [식당 평점] + [메뉴 평점] 동시 계산 함수
   Future<void> _submitReview() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -57,37 +57,39 @@ class _ReviewModalState extends State<ReviewModal> {
     });
 
     try {
-      // 📝 트랜잭션: 식당 점수만 업데이트합니다.
+      // 📝 트랜잭션 시작: 식당과 메뉴의 점수를 동시에 수정합니다.
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         // 1. 참조(Reference) 준비
         final storeRef = FirebaseFirestore.instance.collection('stores').doc(widget.storeId);
+        final menuRef = storeRef.collection('menus').doc(widget.menuId);
+        final newReviewRef = menuRef.collection('reviews').doc(); // 새 리뷰 문서
 
-        // 리뷰는 여전히 메뉴 하위에 저장됩니다 (구조 유지)
-        final reviewRef = storeRef
-            .collection('menus')
-            .doc(widget.menuId)
-            .collection('reviews')
-            .doc();
-
-        // 2. [식당] 데이터 읽기 (Read)
+        // 2. 데이터 읽기 (Read) - 식당과 메뉴 정보를 모두 가져옵니다.
         final storeSnapshot = await transaction.get(storeRef);
+        final menuSnapshot = await transaction.get(menuRef);
 
-        if (!storeSnapshot.exists) {
-          throw Exception("식당 정보를 찾을 수 없습니다.");
+        if (!storeSnapshot.exists || !menuSnapshot.exists) {
+          throw Exception("식당이나 메뉴 정보를 찾을 수 없습니다.");
         }
 
-        // 3. [식당] 평균 평점 재계산 🧮
-        final double currentAvg = (storeSnapshot.data()?['averageRating'] as num?)?.toDouble() ?? 0.0;
-        final int currentCount = (storeSnapshot.data()?['reviewCount'] as num?)?.toInt() ?? 0;
+        // 3. [식당] 평균 계산 🧮
+        final double storeAvg = (storeSnapshot.data()?['averageRating'] as num?)?.toDouble() ?? 0.0;
+        final int storeCount = (storeSnapshot.data()?['reviewCount'] as num?)?.toInt() ?? 0;
 
-        final int newCount = currentCount + 1;
-        // 새로운 평균 = ((기존평균 * 기존개수) + 내점수) / 새개수
-        final double newAvg = ((currentAvg * currentCount) + _rating) / newCount;
+        final int newStoreCount = storeCount + 1;
+        final double newStoreAvg = ((storeAvg * storeCount) + _rating) / newStoreCount;
 
-        // 4. 데이터 쓰기 (Write)
+        // 4. [메뉴] 평균 계산 🧮
+        final double menuAvg = (menuSnapshot.data()?['averageRating'] as num?)?.toDouble() ?? 0.0;
+        final int menuCount = (menuSnapshot.data()?['reviewCount'] as num?)?.toInt() ?? 0;
 
-        // (1) 리뷰 저장 (메뉴 하위에)
-        transaction.set(reviewRef, {
+        final int newMenuCount = menuCount + 1;
+        final double newMenuAvg = ((menuAvg * menuCount) + _rating) / newMenuCount;
+
+        // 5. 데이터 쓰기 (Write) - 3가지를 한꺼번에 처리
+
+        // (1) 리뷰 저장
+        transaction.set(newReviewRef, {
           'rating': _rating,
           'content': _reviewController.text.trim(),
           'author': '익명 곰',
@@ -97,10 +99,16 @@ class _ReviewModalState extends State<ReviewModal> {
           'storeId': widget.storeId,
         });
 
-        // (2) 식당 문서 업데이트 (별점, 리뷰 개수) 🔥 메뉴 업데이트는 제외됨!
+        // (2) 식당 정보 업데이트 (홈 화면용) 🔥
         transaction.update(storeRef, {
-          'averageRating': newAvg,
-          'reviewCount': newCount,
+          'averageRating': newStoreAvg,
+          'reviewCount': newStoreCount,
+        });
+
+        // (3) 메뉴 정보 업데이트 (메뉴 리스트용) 🔥
+        transaction.update(menuRef, {
+          'averageRating': newMenuAvg,
+          'reviewCount': newMenuCount,
         });
       });
 
@@ -108,7 +116,7 @@ class _ReviewModalState extends State<ReviewModal> {
 
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("리뷰 등록 완료! (식당 평점에 반영됨) 🐻")),
+        const SnackBar(content: Text("리뷰 등록 완료! (식당 및 메뉴 평점 반영됨) 🐻")),
       );
     } catch (e) {
       print("리뷰 저장 실패: $e");

@@ -3,15 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:dku_bears_kitchen/controllers/home_controller.dart';
 import 'package:dku_bears_kitchen/screens/menu_screen.dart';
 import 'package:dku_bears_kitchen/screens/review_screen.dart';
-// ✅ 화면 연결
 import 'package:dku_bears_kitchen/screens/ai_recommend_screen.dart';
 import 'package:dku_bears_kitchen/screens/my_page_screen.dart';
 import 'package:dku_bears_kitchen/widgets/menu_image.dart';
+import 'package:dku_bears_kitchen/widgets/filter_modal.dart'; // ✅ 필터 모달 import
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // 탭 버튼 위젯
   Widget _buildChip(String label, bool isSelected, VoidCallback onSelected) {
     return ChoiceChip(
       label: Text(label),
@@ -46,34 +45,41 @@ class HomeScreen extends StatelessWidget {
                 children: const [
                    Icon(Icons.restaurant_menu),
                    SizedBox(width: 8),
-                   Text(
-                    "Bear's Kitchen",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                   Text("Bear's Kitchen", style: TextStyle(fontWeight: FontWeight.bold)),
                 ],
               ),
               backgroundColor: const Color(0xFFFFFFFF),
               foregroundColor: const Color(0xFF1F2937),
               elevation: 0,
+              // 🔥 [추가] 필터 버튼
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.tune), // 조절 아이콘
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => const FilterModal(),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(60),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: TextField(
                     controller: controller.searchController,
-                    onChanged: (value) {
-                      controller.onSearchChanged(value);
-                    },
+                    onChanged: (value) => controller.onSearchChanged(value),
                     decoration: InputDecoration(
                       hintText: "메뉴를 검색해보세요",
                       prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
                       hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
                       filled: true,
                       fillColor: const Color(0xFFF3F4F6),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     ),
                   ),
@@ -87,26 +93,15 @@ class HomeScreen extends StatelessWidget {
         elevation: 4,
         type: BottomNavigationBarType.fixed,
         currentIndex: controller.bottomNavIndex,
-        onTap: (index) {
-          controller.onBottomNavTap(index);
-        },
+        onTap: (index) => controller.onBottomNavTap(index),
         selectedItemColor: const Color(0xFF1F2937),
         unselectedItemColor: const Color(0xFF6B7280),
         selectedFontSize: 12,
         unselectedFontSize: 12,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.lightbulb_outline),
-            label: 'AI 추천',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '메뉴',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: '내 정보',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.lightbulb_outline), label: 'AI 추천'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '메뉴'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: '내 정보'),
         ],
       ),
     );
@@ -145,83 +140,58 @@ class HomeScreen extends StatelessWidget {
                       itemCount: displayedList.length,
                       itemBuilder: (context, index) {
                         final item = displayedList[index];
+                        // 🔥 메뉴인지 식당인지 확인 (메뉴면 가격이 있음)
+                        final bool isMenu = item.containsKey('priceStr');
+
                         return GestureDetector(
                           onTap: () {
                             if (isShowingStores) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MenuScreen(
-                                    storeId: item['id'].toString(),
-                                    storeName: item['name'].toString(),
-                                  ),
-                                ),
-                              );
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => MenuScreen(storeId: item['id'].toString(), storeName: item['name'].toString())));
                             } else {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ReviewScreen(
-                                    storeId: item['storeId'].toString(),
-                                    menuId: item['id'].toString(),
-                                    menuName: item['name'].toString(),
-                                    menuPrice: item['price'].toString(),
-                                  ),
-                                ),
-                              );
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => ReviewScreen(storeId: item['storeId'].toString(), menuId: item['id'].toString(), menuName: item['name'].toString(), menuPrice: item['priceStr'].toString())));
                             }
                           },
                           child: Card(
                             margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                             clipBehavior: Clip.antiAlias,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: const BorderSide(color: Color(0xFFD1D5DB), width: 1.0),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Color(0xFFD1D5DB), width: 1.0)),
                             color: const Color(0xFFFFFFFF),
                             elevation: 0,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // 🔥 [핵심 변경] 이미지(Image.network) 대신 파스텔톤 아이콘(MenuImage) 사용
                                 SizedBox(
                                   height: 180,
                                   width: double.infinity,
                                   child: MenuImage(
-                                    menuName: item['name'].toString(), // 이름만 넣으면 알아서 디자인됨
+                                    menuName: item['name'].toString(),
                                     size: 180,
-                                    borderRadius: 0, // 카드 상단이니까 둥근 모서리 없음
+                                    borderRadius: 0,
                                   ),
                                 ),
-
                                 Container(
                                   width: double.infinity,
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      top: BorderSide(color: Color(0xFFD1D5DB), width: 1.0),
-                                    ),
-                                  ),
+                                  decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFD1D5DB), width: 1.0))),
                                   child: Padding(
                                     padding: const EdgeInsets.all(16),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(
-                                          item['name'].toString(),
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF1F2937),
-                                          ),
-                                        ),
-                                        Row(
+                                        // 이름
+                                        Text(item['name'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
+
+                                        // 우측 정보 (별점 + 가격)
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
-                                            const Icon(Icons.star, color: Color(0xFFFACC15), size: 16),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              item['rating'].toString(),
-                                              style: const TextStyle(color: Color(0xFF4B5563)),
-                                            ),
+                                            Row(children: [const Icon(Icons.star, color: Color(0xFFFACC15), size: 16), const SizedBox(width: 4), Text(item['rating'].toString(), style: const TextStyle(color: Color(0xFF4B5563)))]),
+
+                                            // 🔥 [추가] 메뉴일 때만 가격 표시
+                                            if (isMenu)
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 4.0),
+                                                child: Text(item['priceStr'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
+                                              ),
                                           ],
                                         ),
                                       ],
@@ -243,4 +213,3 @@ class HomeScreen extends StatelessWidget {
     }
   }
 }
-
